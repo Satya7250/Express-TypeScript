@@ -78,6 +78,23 @@ class weatherController {
       });
     }
   }
+
+  public async handleDeleteWeatherById(req: Request, res: Response) {
+    const idParam = req.params.id;
+    if (!idParam || Array.isArray(idParam)) {
+      return res.status(400).json({ message: "Invalid ID" });
+    }
+    const index = this._db.findIndex((t) => t.id === idParam)
+    if(index === -1){
+      return res.status(404).json({message: "NoDataFound"});
+    }
+    try {
+      const [deletedWeather] = this._db.splice(index, 1);
+      res.status(200).json({message: "User Deleted", deletedWeather});
+    } catch (error) {
+      return res.status(500).json({ error });
+    }
+  }
 }
 
 export default weatherController;
