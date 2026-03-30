@@ -1,5 +1,6 @@
 import type { Request, Response } from "express";
 import { todoValidationSchema, todoUpdateSchema, type Todo } from "../../schema/todo.schema.js";
+import { number } from "zod";
 
 class TodoController {
   private _db: Todo[];
@@ -7,8 +8,6 @@ class TodoController {
   constructor() {
     this._db = [];
   }
-
-  //#region //*========== controller ==========
 
   public handleGetAllTodos(req: Request, res: Response) {
     const todos = this._db;
@@ -54,7 +53,7 @@ class TodoController {
     try {
       const data = await todoUpdateSchema.parseAsync(req.body);
       const existingTodo = this._db[index];
-
+      
       if (!existingTodo) {
         return res.status(404).json({ message: "Todo not found" });
       }
@@ -68,29 +67,18 @@ class TodoController {
     }
   }
 
-  public async handleDeleteTodoById(req: Request, res: Response) {
-    const idParam = req.params.id;
-
-    if (!idParam || Array.isArray(idParam)) {
-      return res.status(404).json({ message: "Invalid ID" });
+  public handleDeleteTodoById(req: Request, res: Response) {
+    const id = req.params.id;
+    if (!id) {
+      return res.status(400).json({ message: "ID is required" });
     }
-    const id = idParam;
     const index = this._db.findIndex((t) => t.id === id);
     if (index === -1) {
       return res.status(404).json({ message: "Todo not found" });
     }
-    
-    try {
-      const [deletedTodo] = this._db.splice(index, 1);
-      res.status(200).json({message: "User Deleted", deletedTodo});
-    } catch (error) {
-      return res.status(500).json({ error });
-    }
-
+    const [deletedTodo] = this._db.splice(index, 1);
+    return res.status(200).json({ message: "Todo deleted", todo: deletedTodo });
   }
-
-  //#endregion //*========== controller ==========
-
 }
 
 export default TodoController;
