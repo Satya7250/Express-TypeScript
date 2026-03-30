@@ -1,6 +1,6 @@
 import type { Request, Response } from 'express'
 import { randomBytes, createHmac } from 'node:crypto'
-import { signupPayloadModel } from '../../schema/auth.schema.js'
+import { signupPayloadModel, signInPayLoadModel } from '../../schema/auth.schema.js'
 import { db } from '../../db/index.js'
 import { usersTable } from '../../db/schema.js'
 import { eq } from 'drizzle-orm'
@@ -32,6 +32,28 @@ class AuthenticationController {
 
         return res.status(201).json({ message: 'user has been created successfully', data: { id: result?.id }})
     }
+
+    public async handleSignin(req: Request, res: Response) {
+        const validationResult = await signInPayLoadModel.safeParseAsync(req.body);
+        if(validationResult.error){
+            return res.status(400).json({message: 'body validation failed', error: validationResult.error.issues })
+        }
+        const { email, password } = validationResult.data
+        const [userSelect] = await db.select().from(usersTable).where(eq(usersTable.email, email))
+        if(!userSelect) {
+            return res.status(404).json({ message: `user with email ${email} does not exists`});
+        }
+        const salt = userSelect.salt!
+        const hash = createHmac('sha256', salt).update(password).digest('hex')
+
+        if(userSelect.password !== hash){
+            return res.status(400).json({message: `email or password is incorrect`})
+        }
+
+        return res.json({ message: 'Signin Success', data: { token:1 } })
+
+    }
+
 }
 
 export default AuthenticationController
