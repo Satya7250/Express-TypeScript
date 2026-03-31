@@ -5,9 +5,9 @@ const router = Router()
 const controller = new weatherController()
 
 router.get('/', controller.handleGetAllWeather.bind(controller));
-router.get('/:city', controller.handleGetWeatherByCityName.bind(controller));
+// router.get('/:city', controller.handleGetWeatherByCityName.bind(controller));
 router.post('/', controller.handleInsertWeather.bind(controller));
-router.put('/:id', controller.handleUpdateWeatherById.bind(controller));
-router.delete('/:id',controller.handleDeleteWeatherById.bind(controller));
+// router.put('/:id', controller.handleUpdateWeatherById.bind(controller));
+// router.delete('/:id',controller.handleDeleteWeatherById.bind(controller));
 
 export default router
