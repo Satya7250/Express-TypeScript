@@ -4,9 +4,11 @@ import {
   weatherValidationSchema,
   type Weather,
 } from "../../schema/weather.schema.js";
-import { weatherTable } from "../../db/schema.js"; 
-import { eq } from "drizzle-orm";
+import { weatherTable } from "../../db/schema.js";
+import { eq, and } from "drizzle-orm";
 import { db } from "../../db/index.js";
+
+//#region //*========== Storing Data In Memory ==========
 
 // class weatherController {
 //   private _db: Weather[];
@@ -100,38 +102,135 @@ import { db } from "../../db/index.js";
 //   }
 // }
 
+//#endregion //*========== Storing Data In Memory ==========
+
 class weatherController {
   public async handleGetAllWeather(req: Request, res: Response) {
-    try{
+    try {
       //@ts-ignore
       const userId = req.user?.id;
-      
-      const weather = await db.select().from(weatherTable).where(eq(weatherTable.userId, userId));
-      return res.status(200).json({ weather});
+
+      const weather = await db
+        .select()
+        .from(weatherTable)
+        .where(eq(weatherTable.userId, userId));
+      return res.status(200).json({ weather });
     } catch (error) {
-      return res.status(500).json({error});
+      return res.status(500).json({ error });
     }
   }
 
   public async handleInsertWeather(req: Request, res: Response) {
-    try{
+    try {
       const unvalidated = req.body;
       //@ts-ignore
       unvalidated.userId = req.user?.id;
 
-      const validationResult = await weatherValidationSchema.parseAsync(unvalidated);
-      
-      const [weather] = await db.insert(weatherTable).values({
-        city: validationResult.city,
-        temperature: validationResult.temperature,
-        humidity: validationResult.humidity,
-        windSpeed: validationResult.windSpeed,
-        userId: validationResult.userId,
-      }).returning();
+      const validationResult =
+        await weatherValidationSchema.parseAsync(unvalidated);
 
-      return res.status(201).json({weather});
-    } catch(error) {
-      return res.status(400).json({error});
+      const [weather] = await db
+        .insert(weatherTable)
+        .values({
+          city: validationResult.city,
+          temperature: validationResult.temperature,
+          humidity: validationResult.humidity,
+          windSpeed: validationResult.windSpeed,
+          userId: validationResult.userId,
+        })
+        .returning();
+
+      return res.status(201).json({ weather });
+    } catch (error) {
+      return res.status(400).json({ error });
+    }
+  }
+
+  public async handleGetWeatherByCityName(req: Request, res: Response) {
+    const cityParam = req.params.city;
+
+    //@ts-ignore
+    const userId = req.user?.id;
+    if (!userId) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    if (!cityParam || typeof cityParam !== "string") {
+      return res.status(400).json({ message: "Invalid city" });
+    }
+
+    try {
+      const weather = await db
+        .select()
+        .from(weatherTable)
+        .where(
+          and(
+            eq(weatherTable.city, cityParam),
+            eq(weatherTable.userId, userId),
+          ),
+        );
+      return res.status(200).json({ weather });
+    } catch (error) {
+      return res.status(500).json({ error });
+    }
+  }
+
+  public async handleUpdateWeatherById(req: Request, res: Response) {
+    const idParam = req.params.id;
+    if (!idParam || typeof idParam !== "string") {
+      return res.status(400).json({ message: "Invalid ID" });
+    }
+
+    //@ts-ignore
+    const userId = req.user?.id;
+    if (!userId) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    try {
+      const data = await weatherUpdateSchema.parseAsync(req.body);
+      const [updatedWeather] = await db
+        .update(weatherTable)
+        .set(data)
+        .where(
+          and(eq(weatherTable.id, idParam), eq(weatherTable.userId, userId)),
+        )
+        .returning();
+
+      if (!updatedWeather) {
+        return res.status(404).json({ message: "Weather not found" });
+      }
+      return res.status(200).json({ weather: updatedWeather });
+    } catch (error) {
+      return res.status(500).json({ error: "update failed" });
+    }
+  }
+
+  public async handleDeleteWeatherById(req: Request, res: Response) {
+    const idParam = req.params.id;
+    if (!idParam || typeof idParam !== "string") {
+      return res.status(400).json({ message: "Invalid ID" });
+    }
+
+    //@ts-ignore
+    const userId = req.user?.id;
+    if (!userId) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    try {
+      const [deletedWeather] = await db
+        .delete(weatherTable)
+        .where(
+          and(eq(weatherTable.id, idParam), eq(weatherTable.userId, userId)),
+        )
+        .returning();
+      if (!deletedWeather) {
+        return res.status(404).json({ message: "Weather not found" });
+      }
+      return res.status(200).json({ message: "Weather deleted successfully" });
+    } catch (error) {
+      return res.status(500).json({ error: "Internal Server Error" });
     }
   }
 }
