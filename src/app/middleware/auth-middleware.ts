@@ -18,8 +18,13 @@ export function authenticationMiddleware(){
 
         const user = verifyUserToken(token)
 
-        //@ts-ignore
-        req.user = user
+        if(user.valid) {
+             //@ts-ignore
+            req.user = user.payload
+        } else if (user.expired) {
+             //@ts-ignore
+            req.tokenStatus = 'expired'
+        }
         next()
     }
 
@@ -28,7 +33,13 @@ export function authenticationMiddleware(){
 export function restrictToAuthenticatedUser() {
     return function(req: Request, res: Response, next: NextFunction) {
         //@ts-ignore
-        if(!req.user) return res.status(401).json({ error: 'Authentication Required'})
+        if(!req.user) {
+            //@ts-ignore
+            if (req.tokenStatus === 'expired') {
+                return res.status(401).json({ error: 'Token Expired', message: 'Your token has expired, please login again'})
+            }
+            return res.status(401).json({ error: 'Authentication Required'})
+        }
         return next()
     }
 }
