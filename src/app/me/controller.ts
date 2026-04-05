@@ -6,8 +6,8 @@ import { usersTable } from "../../db/schema.js";
 
 class UserController{
     public async handleMe(req: Request, res: Response) {
-            //@ts-ignore
-            const { id } = req.user! as UserTokenPayload
+   
+            const userId = req.user?.id;
             
             const [userResult] = await db.select().from(usersTable).where(eq(usersTable.id, id))
     
@@ -16,7 +16,7 @@ class UserController{
                 lastName: userResult?.lastName,
                 email: userResult?.email
             })
-        }
+    }
 }
 
 export default UserController
